@@ -83,7 +83,7 @@ function App() {
       await navigator.mediaDevices.getUserMedia({
         audio: false,
         video: {
-          facingMode: (isFront ? "user" : "environment"),
+          facingMode : { exact: "environment" },
         },
       });
     }
