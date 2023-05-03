@@ -1,0 +1,132 @@
+import React, { useRef, useState, useEffect } from "react";
+import * as tf from "@tensorflow/tfjs";
+import * as cocossd from "@tensorflow-models/coco-ssd";
+import Webcam from "react-webcam";
+import "./App.css";
+
+function App() {
+  const webcamRef = useRef(null);
+  const canvasRef = useRef(null);
+  const [objects, setObjects] = useState([]);
+
+  // Load coco-ssd model
+  const runCoco = async () => {
+    const net = await cocossd.load();
+    // Loop and detect hands
+    setInterval(() => {
+      detect(net);
+    }, 10);
+  };
+
+  // Detect objects in the video stream
+  const detect = async (net) => {
+    // Check data is available
+    if (
+      typeof webcamRef.current !== "undefined" &&
+      webcamRef.current !== null &&
+      webcamRef.current.video.readyState === 4
+    ) {
+      // Get video properties
+      const video = webcamRef.current.video;
+      const videoWidth = webcamRef.current.video.videoWidth;
+      const videoHeight = webcamRef.current.video.videoHeight;
+
+      // Set video width and height
+      webcamRef.current.video.width = videoWidth;
+      webcamRef.current.video.height = videoHeight;
+
+      // Set canvas width and height
+      canvasRef.current.width = videoWidth;
+      canvasRef.current.height = videoHeight;
+
+      // Make detections
+      const obj = await net.detect(video);
+
+      // Draw mesh
+      const ctx = canvasRef.current.getContext("2d");
+
+      // Clear previous drawings
+      ctx.clearRect(0, 0, videoWidth, videoHeight);
+
+      // Draw boxes around objects and announce them
+      obj.forEach((item) => {
+        const x = item.bbox[0];
+        const y = item.bbox[1];
+        const width = item.bbox[2];
+        const height = item.bbox[3];
+        // Draw boxes around objects
+        ctx.beginPath();
+        ctx.rect(x, y, width, height);
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "green";
+        ctx.fillStyle = "green";
+        ctx.stroke();
+        ctx.closePath();
+        ctx.font = "16px Arial";
+        ctx.fillStyle = "white";
+        ctx.fillText(item.class, x + 5, y + 20);
+
+        // Calculate distance from object
+        const distance = calculateDistance(item.bbox);
+
+        // Announce object and distance using speech synthesis
+        if (!objects.includes(item.class)) {
+          setObjects([...objects, item.class]);
+          const msg = new SpeechSynthesisUtterance(
+            `${item.class} is ${distance.toFixed(2)} meters away`
+          );
+          window.speechSynthesis.speak(msg);
+        }
+      });
+    }
+  };
+
+  // Calculate distance from object
+  const calculateDistance = (bbox) => {
+    const width = bbox[2];
+    const height = bbox[3];
+    const distance =
+      (12 * 50) / Math.sqrt(width * width + height * height * 4);
+    return distance;
+  };
+
+  useEffect(() => {
+    runCoco();
+  }, []);
+
+  return (
+    <div className="App">
+      <header className="App-header">
+        <Webcam
+          ref={webcamRef}
+          muted={true}
+          style={{
+            position: "absolute",
+            marginLeft: "auto",
+            marginRight: "auto",
+            left: 0,
+            right: 0,
+            textAlign: "center",
+            zindex: 9,
+            width: 640,
+            height: 480,
+          }}
+        />
+
+        <
+
+
+for (let i = 0; i < objects.length; i++) {
+              const object = objects[i];
+              const distanceToObject = calculateDistance(object.bbox);
+              if (distanceToObject <= 0.01) {
+                let announcement = `${object.class} go right`;
+                if (synthRef.current.speaking) {
+                  return;
+                }
+                else if (object.class === "person") {
+                  announcement = `${object.class} in front`;
+                }
+                const utterance = new SpeechSynthesisUtterance(announcement);
+                utterance.rate = 2.5; // set the speech rate to 2x
+                synthRef.current.speak(utterance);
